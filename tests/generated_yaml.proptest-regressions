@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc ef72fb1536679fcf4385edf69e0537e07934fbfa3cb3b5e6214213172aada47d # shrinks to model = Seq(Coll { items: [(0, Seq(Coll { items: [(0, Block(["日\t"], false, false))], flow: false, comma: false, multiline: false, compact: false }))], flow: true, comma: false, multiline: false, compact: false }), crlf = false, bom = false
+cc 927bc2dfdf93eced9065c1c09f1a4430617d0316f7b75cc5a5cd4b69294f7808 # shrinks to model = Map(Coll { items: [(0, ("a", Plain, Seq(Coll { items: [(0, Seq(Coll { items: [(0, Block(["a\t"], false, false))], flow: false, comma: false, multiline: false, compact: false }))], flow: false, comma: false, multiline: false, compact: false })))], flow: false, comma: false, multiline: false, compact: false }), crlf = false, bom = false

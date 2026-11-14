@@ -1,0 +1,26 @@
+[package]
+name = "frontmatter-spans"
+description = "Detect YAML, TOML and JSON front matter and parse it with a source span on every key and value."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+keywords = ["frontmatter", "front-matter", "yaml", "toml", "span"]
+categories = ["parser-implementations", "text-processing"]
+# The workspace default is `false`; the lead publishes this crate by hand.
+publish = true
+
+[dependencies]
+saphyr.workspace = true
+saphyr-parser.workspace = true
+toml_edit.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

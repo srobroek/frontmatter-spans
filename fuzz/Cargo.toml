@@ -1,0 +1,25 @@
+[package]
+name = "frontmatter-spans-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde = { version = "1", features = ["derive"] }
+
+[dependencies.frontmatter-spans]
+path = ".."
+
+# Keep the fuzz crate out of the parent workspace: it needs a nightly toolchain.
+[workspace]
+
+[[bin]]
+name = "parse"
+path = "fuzz_targets/parse.rs"
+test = false
+doc = false
+bench = false
