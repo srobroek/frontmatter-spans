@@ -15,9 +15,9 @@ publish = true
 [dependencies]
 saphyr.workspace = true
 saphyr-parser.workspace = true
-toml_edit.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+toml_edit.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
