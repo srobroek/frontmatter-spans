@@ -86,9 +86,12 @@ Trusted publishing needs the crate to exist, so the first release is published b
 1. Create the repository and install the release app and the CLA app (org or account variables
    `RELEASE_APP_CLIENT_ID`, `CLA_APP_CLIENT_ID`; secrets `RELEASE_APP_PRIVATE_KEY`,
    `CLA_APP_PRIVATE_KEY`). Create the `release` environment.
-2. Publish 0.1.0 by hand from a clean checkout of the tagged commit: `cargo publish`.
+2. Publish 0.1.0 by hand from a clean checkout of `main` after this setup merges: `cargo publish`.
+   Then push an annotated `v0.1.0` tag at that exact commit. release-please reads the tag as the
+   last release, so the next release pull request counts only commits made after it.
 3. On crates.io, add a trusted publisher for this repository: workflow `release.yml`,
    environment `release`.
-4. Merge changes as usual. The manifest starts at `0.1.0`, so the first release pull request bumps
-   from there (for example to `0.2.0` after a `feat`). If a release ever targets a version that
-   crates.io already has, the `publish` job detects it and skips instead of failing.
+4. Merge changes as usual. The manifest starts at `0.1.0` and the `v0.1.0` tag marks it, so the
+   first release pull request bumps from there (for example to `0.2.0` after a `feat`). If a release
+   ever targets a version that crates.io already has, the `publish` job detects it and skips
+   instead of failing.

@@ -2,11 +2,11 @@ name: CI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -19,6 +19,8 @@ env:
 jobs:
   lint:
     name: lint
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -36,6 +38,8 @@ jobs:
 
   test:
     name: test (${{ matrix.os }})
+    permissions:
+      contents: read
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -51,6 +55,8 @@ jobs:
 
   msrv:
     name: msrv (1.88)
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -62,6 +68,8 @@ jobs:
 
   package:
     name: package
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,6 +82,8 @@ jobs:
   semver:
     name: semver
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -86,18 +96,25 @@ jobs:
           code=$(curl -sS -o /dev/null -w '%{http_code}' \
             -A 'frontmatter-spans-ci (https://github.com/srobroek/frontmatter-spans)' \
             https://crates.io/api/v1/crates/frontmatter-spans)
-          if [ "$code" = "200" ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "No crates.io release yet (HTTP $code); skipping the semver check."
-          fi
+          case "$code" in
+            200) echo "exists=true" >> "$GITHUB_OUTPUT" ;;
+            404)
+              echo "exists=false" >> "$GITHUB_OUTPUT"
+              echo "No crates.io release yet; skipping the semver check."
+              ;;
+            *)
+              echo "::error::crates.io returned HTTP $code; cannot tell whether a release exists."
+              exit 1
+              ;;
+          esac
       - name: Check semver compatibility
         if: steps.published.outputs.exists == 'true'
         uses: obi1kenobi/cargo-semver-checks-action@6b69fcf40e9b5fb17adeb57e4b6ecd020649a239 # v2.9
 
   deny:
     name: deny
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -121,6 +138,8 @@ jobs:
     name: ci-ok
     if: always()
     needs: [lint, test, msrv, package, semver, deny, pr-title]
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Fail when a required job failed or was cancelled
