@@ -1,0 +1,30 @@
+name: Bug report
+description: The crate returns a wrong result, a wrong span, or panics.
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Crate version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Input document
+      description: The smallest document that shows the problem. Use escapes for invisible characters.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+      description: Include the span you expected and the span you got.
+    validations:
+      required: true
+  - type: input
+    id: rustc
+    attributes:
+      label: Output of `rustc --version`
