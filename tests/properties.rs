@@ -44,7 +44,9 @@ proptest! {
         nl in prop::sample::select(vec!["\n", "\r\n", "\r"]),
         which in 0usize..3,
     ) {
-        prop_assume!(!(which == 1 && nl == "\r")); // TOML forbids a lone CR
+        // TOML forbids a lone CR. Map it to CRLF instead of rejecting the case: a reject
+        // rate of 1 in 6 exhausts proptest's global reject budget at high case counts.
+        let nl = if which == 1 && nl == "\r" { "\r\n" } else { nl };
         let doc = render(&map, bom, nl, which);
         let fm = FrontMatter::parse(&doc).unwrap().expect("block");
         let Value::Table(entries) = &fm.root.value else { panic!("not a table") };
