@@ -52,7 +52,13 @@ impl Node {
     pub fn entry(&self, key: &str) -> Option<&Entry> {
         match &self.value {
             Value::Table(entries) => entries.iter().rev().find(|e| e.key == key),
-            _ => None,
+            Value::Null
+            | Value::Bool(_)
+            | Value::Integer(_)
+            | Value::Float(_)
+            | Value::String(_)
+            | Value::Datetime(_)
+            | Value::Array(_) => None,
         }
     }
 
@@ -67,7 +73,13 @@ impl Node {
     pub fn as_str(&self) -> Option<&str> {
         match &self.value {
             Value::String(s) => Some(s),
-            _ => None,
+            Value::Null
+            | Value::Bool(_)
+            | Value::Integer(_)
+            | Value::Float(_)
+            | Value::Datetime(_)
+            | Value::Array(_)
+            | Value::Table(_) => None,
         }
     }
 }

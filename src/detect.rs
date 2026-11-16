@@ -23,12 +23,8 @@ pub struct Block {
 /// A block that never closes is not front matter.
 #[must_use]
 pub fn detect(doc: &str) -> Option<Block> {
-    let start = if doc.starts_with('\u{feff}') {
-        '\u{feff}'.len_utf8()
-    } else {
-        0
-    };
-    let rest = &doc[start..];
+    let rest = doc.strip_prefix('\u{feff}').unwrap_or(doc);
+    let start = doc.len().saturating_sub(rest.len());
     if rest.starts_with('{') {
         return json(doc, start);
     }
@@ -40,13 +36,13 @@ pub fn detect(doc: &str) -> Option<Block> {
         return None;
     };
     let (open_end, content_start) = line_at(doc, start);
-    if open_end == content_start || !is_fence(&doc[start..open_end], fence, false) {
+    if open_end == content_start || !is_fence(text(doc, start..open_end), fence, false) {
         return None;
     }
     let mut pos = content_start;
     while pos < doc.len() {
         let (end, next) = line_at(doc, pos);
-        if is_fence(&doc[pos..end], fence, format == Format::Yaml) {
+        if is_fence(text(doc, pos..end), fence, format == Format::Yaml) {
             return Some(Block {
                 format,
                 outer: start..end,
@@ -59,14 +55,24 @@ pub fn detect(doc: &str) -> Option<Block> {
     None
 }
 
+/// The text of `range`, or empty when the range is not a valid slice of `doc`.
+///
+/// Every range here ends at an ASCII line terminator or a brace, so the empty case never occurs.
+fn text(doc: &str, range: Range<usize>) -> &str {
+    doc.get(range).unwrap_or_default()
+}
+
 /// `(end excluding terminator, start of next line)` for the line beginning at `pos`.
 fn line_at(doc: &str, pos: usize) -> (usize, usize) {
     let bytes = doc.as_bytes();
-    let Some(rel) = bytes[pos..].iter().position(|b| matches!(b, b'\n' | b'\r')) else {
+    let Some(rel) = bytes
+        .get(pos..)
+        .and_then(|tail| tail.iter().position(|b| matches!(b, b'\n' | b'\r')))
+    else {
         return (doc.len(), doc.len());
     };
     let end = pos + rel;
-    let crlf = bytes[end] == b'\r' && bytes.get(end + 1) == Some(&b'\n');
+    let crlf = bytes.get(end) == Some(&b'\r') && bytes.get(end + 1) == Some(&b'\n');
     (end, end + if crlf { 2 } else { 1 })
 }
 
@@ -81,7 +87,7 @@ fn json(doc: &str, start: usize) -> Option<Block> {
     let mut depth = 0usize;
     let mut in_string = false;
     let mut escaped = false;
-    for (i, c) in doc[start..].char_indices() {
+    for (i, c) in doc.get(start..)?.char_indices() {
         if in_string {
             match (escaped, c) {
                 (true, _) => escaped = false,
@@ -115,7 +121,10 @@ fn json(doc: &str, start: usize) -> Option<Block> {
 /// The body starts on the next line when only blanks follow the closing brace.
 fn json_body_start(doc: &str, end: usize) -> usize {
     let (line_end, next) = line_at(doc, end);
-    if doc[end..line_end].trim_matches([' ', '\t']).is_empty() {
+    if text(doc, end..line_end)
+        .trim_matches([' ', '\t'])
+        .is_empty()
+    {
         next
     } else {
         end

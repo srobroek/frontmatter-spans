@@ -87,7 +87,13 @@ impl<'a> FrontMatter<'a> {
         block: Block,
         limits: &Limits,
     ) -> Result<Self, ParseError> {
-        let raw = &doc[block.content.clone()];
+        let Some(raw) = doc.get(block.content.clone()) else {
+            return Err(ParseError {
+                format: block.format,
+                message: "the block range is not valid text of the document".to_owned(),
+                span: None,
+            });
+        };
         if raw.len() > limits.max_input_bytes {
             return Err(ParseError {
                 format: block.format,

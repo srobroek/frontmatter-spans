@@ -71,10 +71,11 @@ impl<'a> LineIndex<'a> {
 
     /// Extra bytes (beyond one per character) in `text[..offset]`.
     fn extra_before(&self, offset: usize) -> usize {
-        match self.wide.partition_point(|&(at, _)| at < offset) {
-            0 => 0,
-            n => self.wide[n - 1].1,
-        }
+        self.wide
+            .partition_point(|&(at, _)| at < offset)
+            .checked_sub(1)
+            .and_then(|i| self.wide.get(i))
+            .map_or(0, |&(_, extra)| extra)
     }
 
     /// The line and column of byte `offset`.
@@ -84,12 +85,14 @@ impl<'a> LineIndex<'a> {
     /// column 1.
     #[must_use]
     pub fn line_col(&self, offset: usize) -> LineCol {
-        let mut offset = offset.min(self.text.len()).max(self.starts[0]);
+        let mut offset = offset
+            .min(self.text.len())
+            .max(self.starts.first().copied().unwrap_or(0));
         while !self.text.is_char_boundary(offset) {
             offset -= 1;
         }
         let line = self.starts.partition_point(|&s| s <= offset) - 1;
-        let start = self.starts[line];
+        let start = self.starts.get(line).copied().unwrap_or(0);
         let column = offset - start - (self.extra_before(offset) - self.extra_before(start)) + 1;
         LineCol {
             line: line + 1,
