@@ -1,10 +1,22 @@
 # frontmatter-spans
 
+[![crates.io](https://img.shields.io/crates/v/frontmatter-spans.svg)](https://crates.io/crates/frontmatter-spans)
+[![docs.rs](https://img.shields.io/docsrs/frontmatter-spans)](https://docs.rs/frontmatter-spans)
+[![CI](https://github.com/srobroek/frontmatter-spans/actions/workflows/ci.yml/badge.svg)](https://github.com/srobroek/frontmatter-spans/actions/workflows/ci.yml)
+
 Detect YAML, TOML and JSON front matter at the start of a document and parse it. Every key and
 value carries a source span, and each span indexes the whole document, not the front-matter block.
 
-The crate does not depend on slopvac. It exists because no other crate gives front-matter values
-spans: `gray_matter` has none, and `frontmatter-lossless` only finds the block.
+It exists because no other crate gives front-matter values spans: `gray_matter` has none, and
+`frontmatter-lossless` only finds the block.
+
+## Install
+
+```sh
+cargo add frontmatter-spans
+```
+
+The minimum supported Rust version is 1.88.
 
 ## Use
 
@@ -66,9 +78,9 @@ struct Meta {
     genre: String,
 }
 
-let doc = "---\nslopvac:\n  genre: docs\n---\n";
+let doc = "---\nmeta:\n  genre: docs\n---\n";
 let fm = frontmatter_spans::FrontMatter::parse(doc).unwrap().unwrap();
-let meta = fm.deserialize_key::<Meta>("slopvac").unwrap().unwrap();
+let meta = fm.deserialize_key::<Meta>("meta").unwrap().unwrap();
 assert_eq!(meta.value.genre, "docs");
 // A YAML mapping span is zero-width at its first key.
 assert!(doc[meta.span.range.start..].starts_with("genre: docs"));
@@ -125,8 +137,8 @@ linear in the document, with a logarithmic lookup per position.
 ## Tests and fuzzing
 
 ```sh
-cargo test -p frontmatter-spans
-cargo +nightly fuzz run parse   # from crates/frontmatter-spans, needs cargo-fuzz
+cargo test --all-features
+cargo +nightly fuzz run parse   # needs cargo-fuzz
 ```
 
 The property tests check that spans lie inside the document on character boundaries, and that

@@ -1,26 +1,53 @@
 [package]
 name = "frontmatter-spans"
 description = "Detect YAML, TOML and JSON front matter and parse it with a source span on every key and value."
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
-repository.workspace = true
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+repository = "https://github.com/srobroek/frontmatter-spans"
+documentation = "https://docs.rs/frontmatter-spans"
+homepage = "https://github.com/srobroek/frontmatter-spans"
 readme = "README.md"
 keywords = ["frontmatter", "front-matter", "yaml", "toml", "span"]
 categories = ["parser-implementations", "text-processing"]
-# The workspace default is `false`; the lead publishes this crate by hand.
-publish = true
+include = [
+  "src/**",
+  "tests/**",
+  "Cargo.toml",
+  "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
+]
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
-saphyr.workspace = true
-saphyr-parser.workspace = true
-serde.workspace = true
-thiserror.workspace = true
-toml_edit.workspace = true
+saphyr = "0.3"
+saphyr-parser = "0.3.4"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+toml_edit = "0.25"
 
 [dev-dependencies]
-proptest.workspace = true
+proptest = "1.12.0"
 
-[lints]
-workspace = true
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+invalid_html_tags = "deny"
+bare_urls = "deny"
+missing_crate_level_docs = "deny"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"

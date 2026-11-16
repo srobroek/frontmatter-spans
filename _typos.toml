@@ -1,0 +1,3 @@
+[default]
+# Test inputs spell YAML booleans in mixed case on purpose.
+extend-ignore-re = ["\"TrUe\""]
