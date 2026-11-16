@@ -1,9 +1,5 @@
 #![doc = include_str!("../README.md")]
-#![warn(
-    clippy::arithmetic_side_effects,
-    clippy::indexing_slicing,
-    clippy::string_slice
-)]
+#![warn(clippy::indexing_slicing, clippy::string_slice)]
 
 mod de;
 mod detect;
