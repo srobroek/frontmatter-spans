@@ -16,13 +16,17 @@ Standards for `frontmatter-spans`. [CONTRIBUTING.md](../CONTRIBUTING.md) covers 
 
 ## Lints
 
-Configured in `Cargo.toml` and enforced in CI with `-D warnings`.
+The baseline is configured in `Cargo.toml` and enforced in CI with `-D warnings`.
 
 - rustc: `unsafe_code = "forbid"`, `missing_docs`, `unreachable_pub`, `rust_2018_idioms`.
 - rustdoc, all denied: `broken_intra_doc_links`, `private_intra_doc_links`, `invalid_html_tags`,
   `bare_urls`, `missing_crate_level_docs`.
 - clippy: `pedantic`, with `module_name_repetitions`, `missing_errors_doc` and
   `missing_panics_doc` allowed.
+
+The library also enables a set of clippy restriction lints (for example `indexing_slicing`,
+`unwrap_used`, `as_conversions`) as crate attributes at the top of `src/lib.rs`. They apply to the
+library only, not to the integration tests under `tests/`. `clippy.toml` lets unit tests unwrap, expect, panic, index and print.
 
 An `#[allow]` or `#[expect]` needs a `reason`.
 
