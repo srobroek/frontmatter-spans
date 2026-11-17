@@ -1,4 +1,38 @@
 #![doc = include_str!("../README.md")]
+// Restriction lints guard library code against panics and silent failure. They live here,
+// not in `[lints]`, so the integration tests keep to the pedantic set.
+#![warn(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::todo,
+    clippy::unimplemented,
+    clippy::unreachable,
+    clippy::dbg_macro,
+    clippy::print_stdout,
+    clippy::print_stderr,
+    clippy::exit,
+    clippy::mem_forget,
+    clippy::get_unwrap,
+    clippy::unwrap_in_result,
+    clippy::clone_on_ref_ptr,
+    clippy::redundant_type_annotations,
+    clippy::redundant_clone,
+    clippy::use_debug,
+    clippy::string_add,
+    clippy::needless_pass_by_ref_mut,
+    clippy::expect_used,
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    clippy::let_underscore_must_use,
+    clippy::map_err_ignore,
+    clippy::str_to_string,
+    clippy::wildcard_enum_match_arm,
+    clippy::as_conversions,
+    clippy::significant_drop_tightening,
+    clippy::option_if_let_else,
+    clippy::indexing_slicing,
+    clippy::string_slice
+)]
 
 mod de;
 mod detect;
@@ -82,7 +116,13 @@ impl<'a> FrontMatter<'a> {
         block: Block,
         limits: &Limits,
     ) -> Result<Self, ParseError> {
-        let raw = &doc[block.content.clone()];
+        let Some(raw) = doc.get(block.content.clone()) else {
+            return Err(ParseError {
+                format: block.format,
+                message: "the block range is not valid text of the document".to_owned(),
+                span: None,
+            });
+        };
         if raw.len() > limits.max_input_bytes {
             return Err(ParseError {
                 format: block.format,

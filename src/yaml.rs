@@ -34,10 +34,11 @@ enum Kind {
 impl Offsets<'_> {
     /// Byte offset in the content (not the document) of a marker.
     fn local(&self, at: Marker) -> usize {
-        match &self.chars {
-            None => at.index().min(self.content.len()),
-            Some(t) => t[at.index().min(t.len() - 1)],
-        }
+        // The table always holds the end offset, so `last` is the clamp.
+        self.chars.as_ref().map_or_else(
+            || at.index().min(self.content.len()),
+            |t| t.get(at.index()).or_else(|| t.last()).copied().unwrap_or(0),
+        )
     }
 
     fn caret(&self, at: Marker) -> crate::Span {
@@ -65,7 +66,7 @@ impl Offsets<'_> {
         match kind {
             Kind::Quoted(_) => {}
             Kind::Plain => {
-                while hi > lo && bytes[hi - 1].is_ascii_whitespace() {
+                while hi > lo && bytes.get(hi - 1).is_some_and(u8::is_ascii_whitespace) {
                     hi -= 1;
                 }
             }
@@ -116,13 +117,13 @@ impl Offsets<'_> {
             |b: u8| !b.is_ascii_whitespace() && !matches!(b, b',' | b'[' | b']' | b'{' | b'}');
         let mut lo = self.local(at);
         if bytes.get(lo) != Some(&b'*') {
-            while lo > 0 && is_name(bytes[lo - 1]) && bytes[lo - 1] != b'*' {
+            while lo > 0 && bytes.get(lo - 1).is_some_and(|&b| is_name(b) && b != b'*') {
                 lo -= 1;
             }
-            lo = lo.checked_sub(1).filter(|&i| bytes[i] == b'*')?;
+            lo = lo.checked_sub(1).filter(|&i| bytes.get(i) == Some(&b'*'))?;
         }
         let mut hi = lo + 1;
-        while hi < bytes.len() && is_name(bytes[hi]) {
+        while bytes.get(hi).copied().is_some_and(is_name) {
             hi += 1;
         }
         Some(self.index.span(self.base + lo..self.base + hi))
@@ -133,16 +134,19 @@ impl Offsets<'_> {
     fn property(&self, start: Marker, sigil: u8) -> Option<crate::Span> {
         let bytes = self.content.as_bytes();
         let at = self.local(start);
-        let is_ws = |i: usize| bytes[i].is_ascii_whitespace();
+        let is_ws = |i: usize| bytes.get(i).is_some_and(u8::is_ascii_whitespace);
         let token_end = |mut i: usize| {
-            if bytes[i] == b'!' && bytes.get(i + 1) == Some(&b'<') {
+            if bytes.get(i) == Some(&b'!') && bytes.get(i + 1) == Some(&b'<') {
                 // A verbatim tag runs to its closing `>` and may contain commas.
-                while i < bytes.len() && bytes[i] != b'>' && !is_ws(i) {
+                while bytes.get(i).is_some_and(|&b| b != b'>') && !is_ws(i) {
                     i += 1;
                 }
                 return (i + 1).min(bytes.len());
             }
-            while i < bytes.len() && !is_ws(i) && !matches!(bytes[i], b',' | b']' | b'}') {
+            while bytes
+                .get(i)
+                .is_some_and(|&b| !b.is_ascii_whitespace() && !matches!(b, b',' | b']' | b'}'))
+            {
                 i += 1;
             }
             i
@@ -154,7 +158,7 @@ impl Offsets<'_> {
                 let end = token_end(i);
                 tokens.push((i, end));
                 i = end;
-                while i < bytes.len() && matches!(bytes[i], b' ' | b'\t' | b'\n' | b'\r') {
+                while matches!(bytes.get(i), Some(b' ' | b'\t' | b'\n' | b'\r')) {
                     i += 1;
                 }
             }
@@ -168,7 +172,7 @@ impl Offsets<'_> {
                 while pos > 0 && !is_ws(pos - 1) {
                     pos -= 1;
                 }
-                if pos < end && matches!(bytes[pos], b'&' | b'!') {
+                if pos < end && matches!(bytes.get(pos), Some(b'&' | b'!')) {
                     tokens.push((pos, end));
                 } else {
                     break;
@@ -178,7 +182,7 @@ impl Offsets<'_> {
         }
         tokens
             .into_iter()
-            .find(|&(s, _)| bytes[s] == sigil)
+            .find(|&(s, _)| bytes.get(s) == Some(&sigil))
             .map(|(s, e)| self.index.span(self.base + s..self.base + e))
     }
 }
@@ -190,21 +194,25 @@ impl Offsets<'_> {
 /// last line, which the parser consumes (a blank line is no longer than the first content
 /// line's own indentation `indent`).
 fn block_content_end(bytes: &[u8], lo: usize, hi: usize) -> usize {
-    let line_start = bytes[..lo]
+    let line_start = bytes
+        .get(..lo)
+        .unwrap_or_default()
         .iter()
         .rposition(|b| matches!(b, b'\n' | b'\r'))
         .map_or(0, |i| i + 1);
     let indent = lo - line_start;
     let mut hi = hi;
     loop {
-        while hi > lo && matches!(bytes[hi - 1], b'\n' | b'\r') {
+        while hi > lo && matches!(bytes.get(hi - 1), Some(b'\n' | b'\r')) {
             hi -= 1;
         }
-        let last_start = bytes[lo..hi]
+        let last_start = bytes
+            .get(lo..hi)
+            .unwrap_or_default()
             .iter()
             .rposition(|b| matches!(b, b'\n' | b'\r'))
             .map_or(lo, |i| lo + i + 1);
-        let last = &bytes[last_start..hi];
+        let last = bytes.get(last_start..hi).unwrap_or_default();
         let blank = last.iter().all(|b| matches!(b, b' ' | b'\t'));
         if last_start > lo && blank && last.len() <= indent {
             hi = last_start;
@@ -217,8 +225,11 @@ fn block_content_end(bytes: &[u8], lo: usize, hi: usize) -> usize {
 /// The index of the quote that closes the scalar opened at `open`, searching up to `limit`.
 fn closing_quote(bytes: &[u8], open: usize, quote: u8, limit: usize) -> Option<usize> {
     let mut i = open + 1;
-    while i < limit.min(bytes.len()) {
-        match bytes[i] {
+    while i < limit {
+        let Some(&byte) = bytes.get(i) else {
+            break;
+        };
+        match byte {
             b'\\' if quote == b'"' => i += 1,
             b if b == quote => {
                 if quote == b'\'' && bytes.get(i + 1) == Some(&b'\'') {
@@ -436,7 +447,7 @@ impl Builder<'_> {
 
     fn set_key(&mut self, text: String, span: crate::Span) -> Res<()> {
         let Some(Frame::Map { keys, key, .. }) = self.stack.last_mut() else {
-            unreachable!("only called while a mapping expects a key");
+            return Err(fail("a key has no mapping", Some(span)));
         };
         if !keys.insert(text.clone()) {
             return Err(fail(format!("duplicate key `{text}`"), Some(span)));

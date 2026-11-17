@@ -41,13 +41,22 @@ impl<'de> de::Deserializer<'de> for NodeDe<'de> {
         visitor: V,
     ) -> Result<V::Value, DeError> {
         let node = self.0;
+        let not_an_enum = || DeError {
+            message: "expected a string or a single-key table for an enum".to_owned(),
+            span: None,
+        };
         match &node.value {
             Value::String(s) => visitor.visit_enum(s.as_str().into_deserializer()),
-            Value::Table(entries) if entries.len() == 1 => visitor.visit_enum(Variant(&entries[0])),
-            _ => Err(DeError {
-                message: "expected a string or a single-key table for an enum".to_owned(),
-                span: None,
-            }),
+            Value::Table(entries) => match entries.as_slice() {
+                [only] => visitor.visit_enum(Variant(only)),
+                _ => Err(not_an_enum()),
+            },
+            Value::Null
+            | Value::Bool(_)
+            | Value::Integer(_)
+            | Value::Float(_)
+            | Value::Datetime(_)
+            | Value::Array(_) => Err(not_an_enum()),
         }
         .map_err(|e| e.or_span(&node.span))
     }
@@ -72,17 +81,16 @@ impl<'de> NodeDe<'de> {
             Value::Array(items) => {
                 let mut seq = Seq(items.iter());
                 let value = visitor.visit_seq(&mut seq)?;
-                match seq.0.next() {
-                    // A visitor that stops early (a tuple, a fixed array) left items behind.
-                    Some(extra) => Err(DeError {
+                // A visitor that stops early (a tuple, a fixed array) left items behind.
+                seq.0.next().map_or(Ok(value), |extra| {
+                    Err(DeError {
                         message: format!(
                             "invalid length {}, expected fewer elements in array",
                             items.len()
                         ),
                         span: Some(extra.span.clone()),
-                    }),
-                    None => Ok(value),
-                }
+                    })
+                })
             }
             Value::Table(entries) => {
                 let mut map = Map {
@@ -90,16 +98,15 @@ impl<'de> NodeDe<'de> {
                     pending: None,
                 };
                 let value = visitor.visit_map(&mut map)?;
-                match map.entries.next() {
-                    Some(extra) => Err(DeError {
+                map.entries.next().map_or(Ok(value), |extra| {
+                    Err(DeError {
                         message: format!(
                             "invalid length {}, expected fewer entries in table",
                             entries.len()
                         ),
                         span: Some(extra.key_span.clone()),
-                    }),
-                    None => Ok(value),
-                }
+                    })
+                })
             }
         }
     }

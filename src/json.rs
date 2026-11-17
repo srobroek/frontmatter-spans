@@ -100,8 +100,13 @@ impl Parser<'_> {
         })
     }
 
+    /// The text from the cursor on. The cursor always sits on a character boundary.
+    fn rest(&self) -> &str {
+        self.text.get(self.pos..).unwrap_or_default()
+    }
+
     fn literal(&mut self, word: &str, value: Value) -> Res<Value> {
-        if self.text[self.pos..].starts_with(word) {
+        if self.rest().starts_with(word) {
             self.pos += word.len();
             Ok(value)
         } else {
@@ -199,13 +204,14 @@ impl Parser<'_> {
             }
             self.digits();
         }
-        let text = &self.text[start..self.pos];
+        let text = self.text.get(start..self.pos).unwrap_or_default();
         if !is_float && let Ok(i) = text.parse::<i64>() {
             return Ok(Value::Integer(i));
         }
         text.parse::<f64>()
+            .ok()
             .map(Value::Float)
-            .map_err(|_| ("number out of range".to_owned(), start))
+            .ok_or_else(|| ("number out of range".to_owned(), start))
     }
 
     fn digits(&mut self) {
@@ -218,7 +224,7 @@ impl Parser<'_> {
         self.pos += 1;
         let mut out = String::new();
         loop {
-            let Some(c) = self.text[self.pos..].chars().next() else {
+            let Some(c) = self.rest().chars().next() else {
                 return self.err("unterminated string");
             };
             match c {
@@ -275,7 +281,7 @@ impl Parser<'_> {
     fn unicode(&mut self) -> Res<char> {
         let first = self.hex4()?;
         let code = if (0xD800..0xDC00).contains(&first) {
-            if !self.text[self.pos..].starts_with("\\u") {
+            if !self.rest().starts_with("\\u") {
                 return self.err("unpaired surrogate");
             }
             self.pos += 2;
