@@ -65,6 +65,8 @@ jobs:
   publish:
     needs: [release-please, verify]
     runs-on: ubuntu-latest
+    # Deployment policy: branch main only. GitHub checks it against the workflow ref (main, since
+    # this runs on push to main), not the tag, so a tags-only policy would block this job.
     environment: release
     permissions:
       contents: read

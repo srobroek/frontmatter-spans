@@ -95,7 +95,11 @@ Commits. Version 0.x uses `bump-minor-pre-major`, so a breaking change bumps the
 Trusted publishing needs the crate to exist, so the first release is published by hand.
 
 1. Create the repository and install the release app (variable `RELEASE_APP_CLIENT_ID`, secret
-   `RELEASE_APP_PRIVATE_KEY`). Create the `release` environment.
+   `RELEASE_APP_PRIVATE_KEY`). Create the `release` environment and limit its deployment branches to
+   `main`. GitHub checks that policy against the workflow ref, which is `main` because the workflow
+   runs on push to `main`, not the release tag. A tags-only policy would block `publish`. Also add a
+   tag ruleset on `refs/tags/v*`: block updates and deletions, and let only the release app create
+   tags.
 2. Publish 0.1.0 by hand from a clean checkout of `main` after this setup merges: `cargo publish`.
    Then push an annotated `v0.1.0` tag at that exact commit. release-please reads the tag as the
    last release, so the next release pull request counts only commits made after it.
