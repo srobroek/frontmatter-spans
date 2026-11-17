@@ -46,11 +46,9 @@ the commit message.
 
 Open a pull request with a short description and the checks you ran.
 
-## Contributor licence agreement
+## Licence
 
-You sign the [CLA](CLA.md) once. The CLA bot comments on your first pull request. Reply with
-`I have read the CLA Document and I hereby sign the CLA` and the check turns green. Your
-contributions are licensed under Apache-2.0, the licence of the project.
+Contributions are licensed under Apache-2.0, the licence of the project.
 
 ## Releases
 
