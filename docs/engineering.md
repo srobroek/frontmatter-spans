@@ -78,10 +78,17 @@ Commits. Version 0.x uses `bump-minor-pre-major`, so a breaking change bumps the
 2. Release-please keeps a release pull request open with the version bump (`Cargo.toml`,
    `Cargo.lock`) and the changelog.
 3. Merge the release pull request. Release-please tags `vX.Y.Z` and creates the GitHub release.
-4. The `publish` job runs in the `release` environment: it checks out the tag, runs the tests,
-   skips if crates.io already has the version, then exchanges its OIDC token for a short-lived
-   crates.io token ([trusted publishing](https://crates.io/docs/trusted-publishing)) and runs
-   `cargo publish`.
+4. The `verify` job has no OIDC permission. It checks out the commit SHA that release-please
+   reports, not the tag name. `scripts/verify-release-tag.sh` fails unless the tag exists on the
+   remote, peels to that SHA and matches the `Cargo.toml` version. Then `verify` runs
+   `cargo test --all-features` and `cargo package --locked`.
+5. The `publish` job runs in the `release` environment with only `contents: read` and
+   `id-token: write`. It checks out the same SHA, repeats the tag check, skips if crates.io already
+   has the version, then exchanges its OIDC token for a short-lived crates.io token
+   ([trusted publishing](https://crates.io/docs/trusted-publishing)) and runs
+   `cargo publish --locked --no-verify`. It runs no tests or build of its own. It publishes from the
+   same commit instead of uploading a built `.crate` because that needs no extra registry step.
+   The repeated tag check closes the gap between the two jobs.
 
 ### One-time setup and the first publish
 
