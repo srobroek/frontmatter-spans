@@ -22,6 +22,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      sha: ${{ steps.release.outputs.sha }}
     steps:
       # A token from the release app, so the release PR and tags trigger CI.
       - name: Mint the release app token
@@ -37,10 +38,35 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  publish:
+  # Test and package the exact commit release-please tagged. No OIDC token here.
+  verify:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.release-please.outputs.sha }}
+          persist-credentials: false
+      - name: Check the tag and the crate version match the release commit
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          SHA: ${{ needs.release-please.outputs.sha }}
+          REPO: ${{ github.repository }}
+        run: ./scripts/verify-release-tag.sh
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      - run: cargo test --all-features
+      - run: cargo package --locked
+
+  # Publish the commit that verify checked out. This job only authenticates and publishes.
+  publish:
+    needs: [release-please, verify]
+    runs-on: ubuntu-latest
+    # Deployment policy: branch main only. GitHub checks it against the workflow ref (main, since
+    # this runs on push to main), not the tag, so a tags-only policy would block this job.
     environment: release
     permissions:
       contents: read
@@ -48,11 +74,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: ${{ needs.release-please.outputs.sha }}
           persist-credentials: false
+      # Cheap TOCTOU check: the tag must still point at the verified commit.
+      - name: Check the tag still points at the verified commit
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          SHA: ${{ needs.release-please.outputs.sha }}
+          REPO: ${{ github.repository }}
+        run: ./scripts/verify-release-tag.sh
       - name: Install the pinned toolchain
         run: rustup toolchain install
-      - run: cargo test --all-features
       # The first release (0.1.0) is published by hand, so skip when crates.io has this version.
       - name: Check whether this version is already on crates.io
         id: exists
@@ -73,6 +105,6 @@ jobs:
         if: steps.exists.outputs.published == 'false'
       - name: Publish to crates.io
         if: steps.exists.outputs.published == 'false'
-        run: cargo publish
+        run: cargo publish --locked --no-verify # verify already tested and packaged this commit
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
