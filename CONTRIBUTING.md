@@ -27,6 +27,11 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --all-features
 cargo deny check     # needs cargo-deny
 ```
 
+Library code in `src/lib.rs` also warns on clippy restriction lints such as `unwrap_used`,
+`indexing_slicing` and `as_conversions`, and `-D warnings` turns those warnings into CI failures.
+`clippy.toml` lets test code unwrap, expect, panic, index and print. Write library code to return
+errors instead, and keep it compatible with Rust 1.88.
+
 Fuzzing needs a nightly toolchain and `cargo install cargo-fuzz --locked`:
 
 ```sh
