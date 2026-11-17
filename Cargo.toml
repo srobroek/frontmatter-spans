@@ -1,7 +1,7 @@
 [package]
 name = "frontmatter-spans"
 description = "Detect YAML, TOML and JSON front matter and parse it with a source span on every key and value."
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.88"
 license = "Apache-2.0"
