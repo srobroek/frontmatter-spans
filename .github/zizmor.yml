@@ -1,6 +1,0 @@
-rules:
-  dangerous-triggers:
-    ignore:
-      # cla-assistant must run on pull_request_target and issue_comment to record
-      # signatures. It never checks out or runs code from the pull request.
-      - cla.yml
